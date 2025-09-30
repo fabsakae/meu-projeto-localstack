@@ -73,6 +73,11 @@ def lambda_handler(event, context):
 
                 try:
                     logger.info(f"Inserindo registro no DynamoDB: {registro}")
+        
+                     # **CORREÇÃO CRÍTICA: Converta o float para String**
+                    if 'valor' in registro and not isinstance(registro['valor'], str):
+                        registro['valor'] = str(registro['valor'])
+        
                     table.put_item(Item=registro)
                     logger.info("Registro inserido com sucesso!")
                 except Exception as e:
