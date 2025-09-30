@@ -22,6 +22,7 @@ Usamos o LocalStack CLI e o `awslocal` (um wrapper do AWS CLI) para interagir co
     # Extrai o binário para o PATH
     sudo tar xvzf localstack-cli-4.8.1-linux-*-onefile.tar.gz -C /usr/local/bin
     ```
+<img width="1360" height="768" alt="baixar_localSTACK" src="https://github.com/user-attachments/assets/3f938a1e-8cfd-459c-8cf4-0e9959fcfa15" />
 
 2.  **Instalar o AWS CLI e o awslocal via pipx:**
     Instalamos o `pipx` e as ferramentas CLI do Python em um ambiente isolado:
@@ -36,6 +37,7 @@ Usamos o LocalStack CLI e o `awslocal` (um wrapper do AWS CLI) para interagir co
     # Instala o awslocal (binário 'awslocal')
     pipx install awscli-local
     ```
+<img width="1360" height="768" alt="awslocal" src="https://github.com/user-attachments/assets/9d21b5d6-585b-420d-ba61-6c8ae7ac8e3e" />
 
 ### 2. Iniciando o LocalStack
 
@@ -57,6 +59,7 @@ awslocal configure
 ```
 4. Testando a Conexão
 Confirme que a conexão com o S3 está ativa:
+<img width="1328" height="587" alt="localstakc_running" src="https://github.com/user-attachments/assets/c49b8313-15b6-44bc-81e4-8cbdc325a93b" />
 
 Bash
 
