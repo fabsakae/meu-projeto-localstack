@@ -85,3 +85,10 @@ awslocal dynamodb create-table \
 ```bash
 awslocal dynamodb list-tables --endpoint-url=http://localhost:4566
 ```
+7. Criar o IAM Role (Permissão)
+```bash
+awslocal iam create-role \
+    --role-name lambda-role \
+    --assume-role-policy-document '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":{"Service":"lambda.amazonaws.com"},"Action":"sts:AssumeRole"}]}'
+```
+
