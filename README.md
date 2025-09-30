@@ -63,8 +63,25 @@ Confirme que a conexão com o S3 está ativa:
 
 Bash
 
-# Cria um bucket de teste
-awslocal s3 mb s3://s3
+5. Criar o Bucket notas-fiscais-upload
+Será usado para receber os arquivos, acionando o Lambda.
 
-# Lista os buckets existentes
+```bash
+awslocal s3 mb s3://notas-fiscais-upload
 awslocal s3 ls
+```
+6. DynamoDB - Criar a Tabela NotasFiscais
+Esta tabela armazenará os dados processados.
+
+```bash
+awslocal dynamodb create-table \
+    --endpoint-url=http://localhost:4566 \
+    --table-name NotasFiscais \
+    --attribute-definitions AttributeName=Id,AttributeType=S \
+    --key-schema AttributeName=Id,KeyType=HASH \
+    --provisioned-throughput ReadCapacityUnits=5,WriteCapacityUnits=5
+```
+**Verifica a criação da tabela**
+```bash
+awslocal dynamodb list-tables --endpoint-url=http://localhost:4566
+```
