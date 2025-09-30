@@ -48,13 +48,13 @@ localstack start
 Configure o awslocal para usar credenciais de mock, necessárias para o emulador:
 ```bash
 awslocal configure
+
+
+ AWS Access Key ID: test
+ AWS Secret Access Key: test
+ Default region name: us-east-1
+ Default output format: json
 ```
-
-# AWS Access Key ID: test
-# AWS Secret Access Key: test
-# Default region name: us-east-1
-# Default output format: json
-
 4. Testando a Conexão
 Confirme que a conexão com o S3 está ativa:
 
