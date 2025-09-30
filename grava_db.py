@@ -10,7 +10,11 @@ logger.setLevel(logging.INFO)
 # Configuração da Tabela DynamoDB
 TABLE_NAME = 'NotasFiscais'
 # Adicionando a região para garantir que não procure no DNS global
-dynamodb = boto3.resource('dynamodb', endpoint_url='http://localhost:4566', region_name='us-east-1')  # Garante o endpoint para Boto3 resource
+dynamodb = boto3.resource(
+    'dynamodb', 
+    endpoint_url='http://host.docker.internal:4566', 
+    region_name='us-east-1'
+)   # Garante o endpoint para Boto3 resource
 
 # Funções auxiliares (validação e mover arquivo)
 def validar_registro(registro):
@@ -39,10 +43,12 @@ def mover_arquivo_s3(s3_client, bucket, key, destino):
 
 # Função principal do Lambda
 def lambda_handler(event, context):
-    # CLIENTE S3: Adicione a região também
-    s3 = boto3.client('s3', endpoint_url='http://localhost:4566', region_name='us-east-1')
-    table = dynamodb.Table(TABLE_NAME) # Inicializa a tabela
-     # Garante o endpoint para Boto3 client
+    # CLIENTE S3:
+    s3 = boto3.client(
+        's3', 
+        endpoint_url='http://host.docker.internal:4566', 
+        region_name='us-east-1'
+    )
     table = dynamodb.Table(TABLE_NAME)
     
     for record in event.get('Records', []):
