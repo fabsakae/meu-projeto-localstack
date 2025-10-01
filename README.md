@@ -3,7 +3,7 @@
 1. Iniciar LocalStack: localstack start
 2. Configurar credenciais (awslocal configure): use 'test' e 'us-east-1'
 # meu-projeto-localstack
-## 🚀 Setup e Configuração do LocalStack (Emulador AWS)
+##  Setup e Configuração do LocalStack (Emulador AWS)
 
 Este projeto utiliza o LocalStack para emular os serviços da AWS localmente via Docker no WSL/Ubuntu.
 
@@ -319,6 +319,7 @@ def lambda_handler(event, context):
 
 EOF
 ```
+<img width="990" height="405" alt="gravadb2" src="https://github.com/user-attachments/assets/3a203b45-53af-49b7-9e3c-2376a8f7f8e4" />
 
 Passo C: Compactar a Lambda
 Arquivo ZIP que será enviado no deploy:
@@ -327,6 +328,7 @@ Arquivo ZIP que será enviado no deploy:
 
 zip lambda_function.zip grava_db.py
 ```
+<img width="888" height="686" alt="lambdafunction" src="https://github.com/user-attachments/assets/dc68341a-2021-4495-958a-5446bd5d4f9b" />
 
 
 9. Deploy da função Lambda
@@ -341,6 +343,8 @@ awslocal lambda create-function \
     --zip-file fileb://lambda_function.zip \
     --endpoint-url http://localhost:4566
 ```
+<img width="1351" height="688" alt="lambdapermission" src="https://github.com/user-attachments/assets/0c456da0-28a9-4156-8821-5a1f9a6f589f" />
+
 10. Configurar o Trigger S3
 Após o deploy da Lambda (que deve retornar um JSON grande de confirmação), configurar o S3 para chamar a Lambda:
 
@@ -350,6 +354,8 @@ awslocal lambda add-permission --function-name ProcessarNotasFiscais --statement
     --action "lambda:InvokeFunction" --principal s3.amazonaws.com \
     --source-arn "arn:aws:s3:::notas-fiscais-upload" --endpoint-url http://localhost:4566
 ```
+<img width="1341" height="80" alt="invocação" src="https://github.com/user-attachments/assets/a2972d83-d1c1-45a8-b659-df4ae10f645c" />
+
 B) Configurar o Evento de Notificação (O Trigger)
 ```bash
 awslocal s3api put-bucket-notification-configuration \
@@ -363,6 +369,7 @@ awslocal s3api put-bucket-notification-configuration \
     ]}' \
     --endpoint-url http://localhost:4566
 ```
+<img width="977" height="193" alt="trigger" src="https://github.com/user-attachments/assets/e5f1647a-263f-4173-a3bc-86ed35059d84" />
 
 11.  Gerar o Arquivo de Teste
 criará o arquivo notas_fiscais.json no diretório.
@@ -373,9 +380,12 @@ python gerar_dados.py
 ```bash
 awslocal s3 cp notas_fiscais.json s3://notas-fiscais-upload/notas_fiscais.json --endpoint-url http://localhost:4566
 ```
+<img width="1347" height="685" alt="verificadadosdb" src="https://github.com/user-attachments/assets/dbc38201-008b-4e47-8f04-3697419ded76" />
+
 13. Verificar os Resultados
 DynamoDB: Verifica os 10 registros fictícios inseridos na tabela NotasFiscais.
 ```bash
 awslocal dynamodb scan --table-name NotasFiscais --endpoint-url http://localhost:4566
 ```
+<img width="1360" height="768" alt="verificadadosdn2" src="https://github.com/user-attachments/assets/516c4f1c-4710-4f34-9bda-f9999b8f6457" />
 
