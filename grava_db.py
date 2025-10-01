@@ -39,62 +39,84 @@ def mover_arquivo_s3(s3_client, bucket, key, destino):
         logger.error(f"Erro ao mover o arquivo no S3: {str(e)}")
 
 # Função principal do Lambda
+# NO ARQUIVO grava_db.py (Adicione esta lógica antes da função lambda_handler)
+# Certifique-se de manter as importações no topo (json, boto3, etc.)
+
+# Funções Auxiliares para API Gateway (Adicione estas ao arquivo)
+def handle_get_request(event):
+    # LÓGICA DE GET: SCAN no DynamoDB para retornar todos os itens
+    try:
+        # Nota: O Boto3 precisa ser inicializado localmente se não for global
+        dynamodb = boto3.resource('dynamodb', endpoint_url='http://host.docker.internal:4566', region_name='us-east-1')
+        table = dynamodb.Table('NotasFiscais')
+        
+        response = table.scan()
+        
+        return {
+            'statusCode': 200,
+            'headers': {'Content-Type': 'application/json'},
+            'body': json.dumps(response['Items']) # Retorna os dados do DynamoDB
+        }
+    except Exception as e:
+        logger.error(f"Erro ao consultar DynamoDB: {str(e)}")
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'message': 'Erro interno ao consultar dados.'})
+        }
+
+def handle_post_request(event):
+    # LÓGICA DE POST: Insere um único registro do payload JSON
+    try:
+        dynamodb = boto3.resource('dynamodb', endpoint_url='http://host.docker.internal:4566', region_name='us-east-1')
+        table = dynamodb.Table('NotasFiscais')
+
+        # O payload do API Gateway vem como uma string JSON no 'body'
+        data = json.loads(event['body'])
+        
+        # O campo 'valor' é float, precisamos convertê-lo para String/Decimal (Serialização)
+        if 'valor' in data and not isinstance(data['valor'], str):
+            data['valor'] = str(data['valor'])
+        
+        table.put_item(Item=data)
+
+        return {
+            'statusCode': 201,
+            'body': json.dumps({'message': 'Nota fiscal registrada via API com sucesso.'})
+        }
+    except Exception as e:
+        logger.error(f"Erro no POST API: {str(e)}")
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'message': 'Erro ao processar o POST.'})
+        }
+
+
+# Modifique a função principal lambda_handler para incluir o roteamento:
 def lambda_handler(event, context):
-    # CLIENTE S3:
-    s3 = boto3.client('s3')    
-    table = dynamodb.Table(TABLE_NAME)
     
-    for record in event.get('Records', []):
-        s3_bucket = record['s3']['bucket']['name']
-        s3_key = record['s3']['object']['key']
+    # ----------------------------------------------------
+    # LÓGICA DE ROTEAMENTO: Verifica se é uma chamada HTTP
+    # ----------------------------------------------------
+    if 'httpMethod' in event:
+        http_method = event['httpMethod']
         
-        logger.info(f"Processando arquivo: s3://{s3_bucket}/{s3_key}")
+        if http_method == 'GET':
+            return handle_get_request(event)
         
-        try:
-            # 1. Ler o arquivo do S3
-            response = s3.get_object(Bucket=s3_bucket, Key=s3_key)
-            file_content = response['Body'].read().decode('utf-8')
+        elif http_method == 'POST':
+            return handle_post_request(event)
             
-            # 2. Carregar o conteúdo como JSON
-            try:
-                registros = json.loads(file_content)
-                logger.info(f"Arquivo JSON carregado com sucesso. Total de registros: {len(registros)}")
-            except json.JSONDecodeError as e:
-                logger.error(f"Erro ao decodificar o JSON: {str(e)}")
-                mover_arquivo_s3(s3, s3_bucket, s3_key, "erro")
-                continue # Pula para o próximo registro S3
+        else:
+            return {'statusCode': 405, 'body': json.dumps({'message': f'Método {http_method} não suportado!'})}
 
-            # 3. Processar e Inserir no DynamoDB
-            for registro in registros:
-                valido, mensagem = validar_registro(registro)
-                if not valido:
-                    logger.warning(f"Registro inválido: {mensagem}")
-                    continue
-
-                try:
-                    logger.info(f"Inserindo registro no DynamoDB: {registro}")
-        
-                     # **CORREÇÃO CRÍTICA: Converta o float para String**
-                    if 'valor' in registro and not isinstance(registro['valor'], str):
-                        registro['valor'] = str(registro['valor'])
-        
-                    table.put_item(Item=registro)
-                    logger.info("Registro inserido com sucesso!")
-                except Exception as e:
-                    logger.error(f"Erro ao inserir registro no DynamoDB: {str(e)}")
-                    mover_arquivo_s3(s3, s3_bucket, s3_key, "erro")
-                    break # Interrompe o processamento deste arquivo
-
-            # 4. Mover arquivo para pasta de sucesso
-            mover_arquivo_s3(s3, s3_bucket, s3_key, "sucesso")
-
-        except Exception as e:
-            logger.error(f"Erro inesperado ao processar o arquivo: {str(e)}")
-            mover_arquivo_s3(s3, s3_bucket, s3_key, "erro")
-            continue
-            
+    # ----------------------------------------------------
+    # LÓGICA DE PROCESSAMENTO S3 (Se a chamada NÃO for HTTP)
+    # ----------------------------------------------------
+    
+    # ... O restante do seu código S3 que você já tem (leitura, loop, put_item) deve vir aqui ...
+    
+    # Se for um evento S3, você deve retornar a resposta padrão
     return {
         'statusCode': 200,
         'body': json.dumps('Processamento concluído com sucesso!')
     }
-
