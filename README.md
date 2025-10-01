@@ -487,3 +487,144 @@ curl -X POST \
      http://localhost:4566/restapis/htdk2mzlhb/dev/_user_request_/notas
 ```
 
+18. Implementar o roteamento de API Gateway e a lógica de busca/inserção na sua função Lambda.
+*  Corrigir o Código da Lambda (grava_db.py):
+```bash
+ # NO ARQUIVO grava_db.py (Adicione esta lógica antes da função lambda_handler)
+ # Certifique-se de manter as importações no topo (json, boto3, etc.)
+
+ # Funções Auxiliares para API Gateway (Adicione estas ao arquivo)
+
+def handle_get_request(event):
+    # LÓGICA DE GET: SCAN no DynamoDB para retornar todos os itens
+    try:
+        # Nota: O Boto3 precisa ser inicializado localmente se não for global
+        dynamodb = boto3.resource('dynamodb', endpoint_url='http://host.docker.internal:4566', region_name='us-east-1')
+        table = dynamodb.Table('NotasFiscais')
+        
+        response = table.scan()
+        
+        return {
+            'statusCode': 200,
+            'headers': {'Content-Type': 'application/json'},
+            'body': json.dumps(response['Items']) # Retorna os dados do DynamoDB
+        }
+    except Exception as e:
+        logger.error(f"Erro ao consultar DynamoDB: {str(e)}")
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'message': 'Erro interno ao consultar dados.'})
+        }
+
+def handle_post_request(event):
+    # LÓGICA DE POST: Insere um único registro do payload JSON
+    try:
+        dynamodb = boto3.resource('dynamodb', endpoint_url='http://host.docker.internal:4566', region_name='us-east-1')
+        table = dynamodb.Table('NotasFiscais')
+
+        # O payload do API Gateway vem como uma string JSON no 'body'
+        data = json.loads(event['body'])
+        
+        # O campo 'valor' é float, precisamos convertê-lo para String/Decimal (Serialização)
+        if 'valor' in data and not isinstance(data['valor'], str):
+            data['valor'] = str(data['valor'])
+        
+        table.put_item(Item=data)
+
+        return {
+            'statusCode': 201,
+            'body': json.dumps({'message': 'Nota fiscal registrada via API com sucesso.'})
+        }
+    except Exception as e:
+        logger.error(f"Erro no POST API: {str(e)}")
+        return {
+            'statusCode': 500,
+            'body': json.dumps({'message': 'Erro ao processar o POST.'})
+        }
+
+
+ # Modifique a função principal lambda_handler para incluir o roteamento:
+def lambda_handler(event, context):
+    
+    # ----------------------------------------------------
+    # LÓGICA DE ROTEAMENTO: Verifica se é uma chamada HTTP
+    # ----------------------------------------------------
+    if 'httpMethod' in event:
+        http_method = event['httpMethod']
+        
+        if http_method == 'GET':
+            return handle_get_request(event)
+        
+        elif http_method == 'POST':
+            return handle_post_request(event)
+            
+        else:
+            return {'statusCode': 405, 'body': json.dumps({'message': f'Método {http_method} não suportado!'})}
+
+    # ----------------------------------------------------
+    # LÓGICA DE PROCESSAMENTO S3 (Se a chamada NÃO for HTTP)
+    # ----------------------------------------------------
+    
+    # ... O restante do seu código S3 que você já tem (leitura, loop, put_item) deve vir aqui ...
+    
+    # Se for um evento S3, você deve retornar a resposta padrão
+    return {
+        'statusCode': 200,
+        'body': json.dumps('Processamento concluído com sucesso!')
+    }
+```
+
+* Re-compactar e Atualizar a Lambda
+```bash
+ # 1. Re-compactar o código
+zip lambda_function.zip grava_db.py
+
+ # 2. Atualizar a função Lambda
+awslocal lambda update-function-code \
+    --function-name ProcessarNotasFiscais \
+    --zip-file fileb://lambda_function.zip \
+    --endpoint-url http://localhost:4566
+```
+* Testar o POST (Inserção) e o GET (Consulta)
+```bash
+# TESTE 1: POST - Inserir um novo registro via API
+curl -X POST \
+     -H 'Content-Type: application/json' \
+     -d '{"Id": "NF-API-01", "cliente": "Cliente Via API", "valor": 555.55, "data_emissao": "2025-09-30"}' \
+     http://localhost:4566/restapis/htdk2mzlhb/dev/_user_request_/notas
+
+# TESTE 2: GET - Consultar todos os dados (deve incluir os 10 do S3 + 1 da API)
+curl http://localhost:4566/restapis/htdk2mzlhb/dev/_user_request_/notas
+```
+* O fluxo de dados completo está confirmado e operacional:
+
+S3 → Lambda → DynamoDB (Funciona: Registros Inseridos)
+
+API Gateway (GET) → Lambda → DynamoDB (Scan) → API Gateway (Funciona: Dados Retornados)
+* Teste Final de Inserção via API
+```bash
+curl -X POST \
+     -H 'Content-Type: application/json' \
+     -d '{"Id": "NF-API-01", "cliente": "Cliente Via API", "valor": 555.55, "data_emissao": "2025-09-30"}' \
+     http://localhost:4566/restapis/htdk2mzlhb/dev/_user_request_/notas
+```
+```bash
+curl http://localhost:4566/restapis/htdk2mzlhb/dev/_user_request_/notas
+```
+O JSON retornado agora mostra 11 registros, confirmando que a inserção via API Gateway funcionou:
+
+Total de Registros: 11 (Os 10 originais do S3 + 1 inserido via POST).
+
+Novo Registro Validado: O registro inserido via API está presente:
+
+"Id": "NF-API-01"
+
+"cliente": "Cliente Via API"
+
+"valor": "555.55"
+
+Validando todos os fluxos do seu ambiente Serverless no LocalStack:
+
+Fluxo de Arquivo: S3 → Lambda → DynamoDB
+
+Fluxo de API: API Gateway → Lambda (Roteamento e Lógica) → DynamoDB
