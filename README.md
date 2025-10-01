@@ -389,3 +389,101 @@ awslocal dynamodb scan --table-name NotasFiscais --endpoint-url http://localhost
 ```
 <img width="1360" height="768" alt="verificadadosdn2" src="https://github.com/user-attachments/assets/516c4f1c-4710-4f34-9bda-f9999b8f6457" />
 
+14. Criar a API
+```bash
+awslocal apigateway create-rest-api --name "NotasFiscaisAPI" --endpoint-url=http://localhost:4566
+```
+15. Criar o Recurso /notas
+```bash
+awslocal apigateway create-resource \
+    --rest-api-id htdk2mzlhb \
+    --parent-id yztdbq9eng \
+    --path-part "notas" \
+    --endpoint-url=http://localhost:4566
+```
+
+16. Configurar os Métodos POST e GET
+## Implementar o Método POST: Configurar o método POST para enviar dados (que a Lambda processará ou salvará diretamente).
+
+
+```bash
+awslocal apigateway put-method \
+    --rest-api-id htdk2mzlhb \
+    --resource-id tzvlgl1y6w \
+    --http-method POST \
+    --authorization-type "NONE" \
+    --endpoint-url=http://localhost:4566
+```
+A- Integrar o Método POST com a Lambda, este comando conecta o método POST à sua função Lambda ProcessarNotasFiscais.:
+
+```bash
+awslocal apigateway put-integration \
+    --rest-api-id htdk2mzlhb \
+    --resource-id tzvlgl1y6w \
+    --http-method POST \
+    --type AWS_PROXY \
+    --integration-http-method POST \
+    --uri "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:000000000000:function:ProcessarNotasFiscais/invocations" \
+    --endpoint-url=http://localhost:4566
+```
+## Implementar o Método GET: Configurar o método GET para buscar dados da tabela DynamoDB via Lambda.
+
+```bash
+
+awslocal apigateway put-method \
+    --rest-api-id htdk2mzlhb \
+    --resource-id tzvlgl1y6w \
+    --http-method GET \
+    --authorization-type "NONE" \
+    --endpoint-url=http://localhost:4566
+```
+A-  Integrar o Método GET com a Lambda. A integração é a mesma do POST, pois a Lambda lidará com o roteamento
+ ```bash
+awslocal apigateway put-integration \
+    --rest-api-id htdk2mzlhb \
+    --resource-id tzvlgl1y6w \
+    --http-method GET \
+    --type AWS_PROXY \
+    --integration-http-method POST \
+    --uri "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:000000000000:function:ProcessarNotasFiscais/invocations" \
+    --endpoint-url=http://localhost:4566
+```
+B- Conceder Permissão à API Gateway
+Para que o API Gateway possa realmente chamar a sua função Lambda, precisa conceder a ele a permissão IAM necessária.
+
+```Bash
+
+awslocal lambda add-permission --function-name ProcessarNotasFiscais --statement-id apigateway-access-post \
+    --action "lambda:InvokeFunction" \
+    --principal apigateway.amazonaws.com \
+    --source-arn "arn:aws:execute-api:us-east-1:000000000000:htdk2mzlhb/*/POST/notas" \
+    --endpoint-url=http://localhost:4566
+```
+
+
+C- Permissão de Invocação para o GET
+```baSH
+awslocal lambda add-permission --function-name ProcessarNotasFiscais --statement-id apigateway-access-get \
+    --action "lambda:InvokeFunction" \
+    --principal apigateway.amazonaws.com \
+    --source-arn "arn:aws:execute-api:us-east-1:000000000000:htdk2mzlhb/*/GET/notas" \
+    --endpoint-url=http://localhost:4566
+```
+d- Implementar o Deploy da API
+criar o deployment para tornar a API acessível publicamente (no LocalStack) no stage dev.
+
+```Bash
+
+awslocal apigateway create-deployment \
+    --rest-api-id htdk2mzlhb \
+    --stage-name dev \
+    --endpoint-url=http://localhost:4566
+```
+17.  Testar o Método POST
+```bash
+curl -X POST \
+     -H 'Content-Type: application/json' \
+     -d '{"Id": "NF-API-01", "cliente": "Cliente Via API", "valor": 555.55, "data_emissao": "2025-09-30"}' \
+     http://localhost:4566/restapis/htdk2mzlhb/dev/_user_request_/notas
+```
+
