@@ -393,6 +393,8 @@ awslocal dynamodb scan --table-name NotasFiscais --endpoint-url http://localhost
 ```bash
 awslocal apigateway create-rest-api --name "NotasFiscaisAPI" --endpoint-url=http://localhost:4566
 ```
+<img width="1342" height="283" alt="apigateway" src="https://github.com/user-attachments/assets/8c94bba5-097b-4d4a-94a4-1225443e6090" />
+
 15. Criar o Recurso /notas
 ```bash
 awslocal apigateway create-resource \
@@ -401,6 +403,7 @@ awslocal apigateway create-resource \
     --path-part "notas" \
     --endpoint-url=http://localhost:4566
 ```
+<img width="868" height="216" alt="senha recurso" src="https://github.com/user-attachments/assets/b1b40194-29b8-4d2f-b7d5-b7389c4ef752" />
 
 16. Configurar os Métodos POST e GET
 ## Implementar o Método POST: Configurar o método POST para enviar dados (que a Lambda processará ou salvará diretamente).
@@ -414,6 +417,8 @@ awslocal apigateway put-method \
     --authorization-type "NONE" \
     --endpoint-url=http://localhost:4566
 ```
+<img width="753" height="206" alt="post" src="https://github.com/user-attachments/assets/20ffa6f4-8b04-47a9-b092-c7401f53759e" />
+
 A- Integrar o Método POST com a Lambda, este comando conecta o método POST à sua função Lambda ProcessarNotasFiscais.:
 
 ```bash
@@ -426,6 +431,8 @@ awslocal apigateway put-integration \
     --uri "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:000000000000:function:ProcessarNotasFiscais/invocations" \
     --endpoint-url=http://localhost:4566
 ```
+<img width="1351" height="368" alt="postintagration" src="https://github.com/user-attachments/assets/5aa043fb-dc6f-4495-a3a6-e1382cce4320" />
+
 ## Implementar o Método GET: Configurar o método GET para buscar dados da tabela DynamoDB via Lambda.
 
 ```bash
@@ -437,6 +444,8 @@ awslocal apigateway put-method \
     --authorization-type "NONE" \
     --endpoint-url=http://localhost:4566
 ```
+<img width="799" height="233" alt="get" src="https://github.com/user-attachments/assets/e4bfcfb8-82ea-4788-a694-5016b49f6ae4" />
+
 A-  Integrar o Método GET com a Lambda. A integração é a mesma do POST, pois a Lambda lidará com o roteamento
  ```bash
 awslocal apigateway put-integration \
@@ -448,6 +457,8 @@ awslocal apigateway put-integration \
     --uri "arn:aws:apigateway:us-east-1:lambda:path/2015-03-31/functions/arn:aws:lambda:us-east-1:000000000000:function:ProcessarNotasFiscais/invocations" \
     --endpoint-url=http://localhost:4566
 ```
+<img width="1360" height="768" alt="invoctionget" src="https://github.com/user-attachments/assets/e933ea1b-bb7e-471b-8ff1-96f1e714ad83" />
+
 B- Conceder Permissão à API Gateway
 Para que o API Gateway possa realmente chamar a sua função Lambda, precisa conceder a ele a permissão IAM necessária.
 
@@ -470,7 +481,7 @@ awslocal lambda add-permission --function-name ProcessarNotasFiscais --statement
     --endpoint-url=http://localhost:4566
 ```
 d- Implementar o Deploy da API
-criar o deployment para tornar a API acessível publicamente (no LocalStack) no stage dev.
+Criar o deployment para tornar a API acessível publicamente (no LocalStack) no stage dev.
 
 ```Bash
 
@@ -479,6 +490,7 @@ awslocal apigateway create-deployment \
     --stage-name dev \
     --endpoint-url=http://localhost:4566
 ```
+
 17.  Testar o Método POST
 ```bash
 curl -X POST \
@@ -573,6 +585,7 @@ def lambda_handler(event, context):
         'body': json.dumps('Processamento concluído com sucesso!')
     }
 ```
+<img width="1021" height="692" alt="handlemod" src="https://github.com/user-attachments/assets/48a4eb22-5079-44a0-8e3f-8cad21236328" />
 
 * Re-compactar e Atualizar a Lambda
 ```bash
@@ -596,6 +609,8 @@ curl -X POST \
 # TESTE 2: GET - Consultar todos os dados (deve incluir os 10 do S3 + 1 da API)
 curl http://localhost:4566/restapis/htdk2mzlhb/dev/_user_request_/notas
 ```
+<img width="1332" height="594" alt="apigatewaylocalstack" src="https://github.com/user-attachments/assets/88b5ce5d-adb3-4d49-b21a-6449c8268c0e" />
+
 * O fluxo de dados completo está confirmado e operacional:
 
 S3 → Lambda → DynamoDB (Funciona: Registros Inseridos)
@@ -611,6 +626,8 @@ curl -X POST \
 ```bash
 curl http://localhost:4566/restapis/htdk2mzlhb/dev/_user_request_/notas
 ```
+<img width="1360" height="768" alt="teste2" src="https://github.com/user-attachments/assets/089e48ee-538e-454b-ad02-1e75edbea3e6" />
+
 O JSON retornado agora mostra 11 registros, confirmando que a inserção via API Gateway funcionou:
 
 Total de Registros: 11 (Os 10 originais do S3 + 1 inserido via POST).
@@ -622,6 +639,7 @@ Novo Registro Validado: O registro inserido via API está presente:
 "cliente": "Cliente Via API"
 
 "valor": "555.55"
+<img width="1334" height="247" alt="testefinalapi" src="https://github.com/user-attachments/assets/6e2b2f50-f722-4cd0-8035-f6a2c733fd12" />
 
 Validando todos os fluxos do seu ambiente Serverless no LocalStack:
 
