@@ -329,8 +329,53 @@ zip lambda_function.zip grava_db.py
 ```
 
 
-9. Gerar o Arquivo de Teste
+9. Deploy da função Lambda
+Código de criação da função, ele irá carregar o lambda_function.zip e associá-lo ao IAM role.
+
+```bash
+awslocal lambda create-function \
+    --function-name ProcessarNotasFiscais \
+    --runtime python3.9 \
+    --role arn:aws:iam::000000000000:role/lambda-role \
+    --handler grava_db.lambda_handler \
+    --zip-file fileb://lambda_function.zip \
+    --endpoint-url http://localhost:4566
+```
+10. Configurar o Trigger S3
+Após o deploy da Lambda (que deve retornar um JSON grande de confirmação), configurar o S3 para chamar a Lambda:
+
+A) Adicionar Permissão de Invocação
+```bash
+awslocal lambda add-permission --function-name ProcessarNotasFiscais --statement-id s3-trigger-permission \
+    --action "lambda:InvokeFunction" --principal s3.amazonaws.com \
+    --source-arn "arn:aws:s3:::notas-fiscais-upload" --endpoint-url http://localhost:4566
+```
+B) Configurar o Evento de Notificação (O Trigger)
+```bash
+awslocal s3api put-bucket-notification-configuration \
+    --bucket notas-fiscais-upload \
+    --notification-configuration '{"LambdaFunctionConfigurations": [
+        {
+            "Id": "s3-to-lambda-trigger",
+            "LambdaFunctionArn": "arn:aws:lambda:us-east-1:000000000000:function:ProcessarNotasFiscais",
+            "Events": ["s3:ObjectCreated:*"]
+        }
+    ]}' \
+    --endpoint-url http://localhost:4566
+```
+
+11.  Gerar o Arquivo de Teste
+criará o arquivo notas_fiscais.json no diretório.
 ```bash
 python gerar_dados.py
+```
+12. Enviar o Arquivo para o S3 (Trigger)
+```bash
+awslocal s3 cp notas_fiscais.json s3://notas-fiscais-upload/notas_fiscais.json --endpoint-url http://localhost:4566
+```
+13. Verificar os Resultados
+DynamoDB: Verifica os 10 registros fictícios inseridos na tabela NotasFiscais.
+```bash
+awslocal dynamodb scan --table-name NotasFiscais --endpoint-url http://localhost:4566
 ```
 
